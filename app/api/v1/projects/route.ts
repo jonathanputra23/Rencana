@@ -1,91 +1,77 @@
 import { NextResponse } from "next/server"
-
-// Sample project data
-const projects = [
-  {
-    id: "1",
-    name: "Web App Development",
-    description: "Frontend and backend development for the customer portal",
-    status: "In Progress",
-    progress: 65,
-    startDate: "2023-03-01",
-    endDate: "2023-04-28",
-    members: [
-      { id: "user-1", name: "Alex Johnson", role: "Frontend Developer" },
-      { id: "user-2", name: "Sarah Miller", role: "UX Designer" },
-      { id: "user-3", name: "David Chen", role: "Backend Developer" },
-      { id: "user-4", name: "Emily Rodriguez", role: "QA Engineer" },
-      { id: "user-5", name: "Michael Wong", role: "DevOps Engineer" },
-    ],
-    tasks: {
-      total: 24,
-      completed: 15,
-    },
-  },
-  {
-    id: "2",
-    name: "Mobile App Development",
-    description: "iOS and Android applications with shared codebase",
-    status: "In Progress",
-    progress: 40,
-    startDate: "2023-03-15",
-    endDate: "2023-05-15",
-    members: [
-      { id: "user-1", name: "Alex Johnson", role: "Frontend Developer" },
-      { id: "user-4", name: "Emily Rodriguez", role: "QA Engineer" },
-      { id: "user-6", name: "Jessica Taylor", role: "Product Manager" },
-      { id: "user-7", name: "Robert Kim", role: "Mobile Developer" },
-    ],
-    tasks: {
-      total: 18,
-      completed: 7,
-    },
-  },
-  {
-    id: "3",
-    name: "API Development",
-    description: "RESTful API services for internal and external use",
-    status: "In Progress",
-    progress: 80,
-    startDate: "2023-03-01",
-    endDate: "2023-04-20",
-    members: [
-      { id: "user-3", name: "David Chen", role: "Backend Developer" },
-      { id: "user-4", name: "Emily Rodriguez", role: "QA Engineer" },
-      { id: "user-8", name: "Lisa Wang", role: "Backend Developer" },
-    ],
-    tasks: {
-      total: 12,
-      completed: 9,
-    },
-  },
-]
+import { prisma } from "@/lib/prisma"
 
 export async function GET(req: Request) {
   try {
     // Get query parameters
     const url = new URL(req.url)
     const status = url.searchParams.get("status")
-    const memberId = url.searchParams.get("memberId")
+    const assigneeId = url.searchParams.get("assigneeId")
+    const page = parseInt(url.searchParams.get("page") || "1")
+    const limit = parseInt(url.searchParams.get("limit") || "10")
+    const skip = (page - 1) * limit
 
-    // Filter projects based on query parameters
-    let filteredProjects = [...projects]
-
+    // Build query filters
+    const where: any = {}
+    
     if (status) {
-      filteredProjects = filteredProjects.filter((project) => project.status.toLowerCase() === status.toLowerCase())
+      where.status = status
+    }
+    
+    if (assigneeId) {
+      where.tasks = {
+        some: {
+          assigneeId: parseInt(assigneeId)
+        }
+      }
     }
 
-    if (memberId) {
-      filteredProjects = filteredProjects.filter((project) => project.members.some((member) => member.id === memberId))
-    }
+    // Get projects with count
+    const [projects, total] = await Promise.all([
+      prisma.project.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          updatedAt: 'desc'
+        },
+        include: {
+          tasks: {
+            select: {
+              id: true,
+              status: true
+            }
+          }
+        }
+      }),
+      prisma.project.count({ where })
+    ])
+
+    // Transform data to include task counts
+    const projectsWithTaskCounts = projects.map((project: any) => {
+      const totalTasks = project.tasks.length
+      const completedTasks = project.tasks.filter((task: any) => task.status === 'Done').length
+      
+      // Remove tasks array from response
+      const { tasks, ...projectData } = project
+      
+      return {
+        ...projectData,
+        tasks: {
+          total: totalTasks,
+          completed: completedTasks
+        }
+      }
+    })
 
     return NextResponse.json({
       success: true,
-      data: filteredProjects,
+      data: projectsWithTaskCounts,
       meta: {
-        total: filteredProjects.length,
-        page: 1,
-        limit: 10,
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
       },
     })
   } catch (error) {
@@ -99,33 +85,28 @@ export async function POST(req: Request) {
     const body = await req.json()
 
     // Validate required fields
-    if (!body.name || !body.description) {
-      return NextResponse.json({ success: false, message: "Name and description are required" }, { status: 400 })
+    if (!body.name) {
+      return NextResponse.json({ success: false, message: "Project name is required" }, { status: 400 })
     }
 
     // Create a new project
-    const newProject = {
-      id: `${projects.length + 1}`,
-      name: body.name,
-      description: body.description,
-      status: body.status || "Planning",
-      progress: body.progress || 0,
-      startDate: body.startDate || new Date().toISOString().split("T")[0],
-      endDate: body.endDate,
-      members: body.members || [],
-      tasks: {
-        total: 0,
-        completed: 0,
-      },
-    }
-
-    // In a real app, you would save this to a database
-    // For this example, we'll just return the new project
+    const newProject = await prisma.project.create({
+      data: {
+        name: body.name,
+        description: body.description || ""
+      }
+    })
 
     return NextResponse.json(
       {
         success: true,
-        data: newProject,
+        data: {
+          ...newProject,
+          tasks: {
+            total: 0,
+            completed: 0
+          }
+        },
         message: "Project created successfully",
       },
       { status: 201 },

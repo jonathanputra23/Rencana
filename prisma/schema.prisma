@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Models for Rencana project management app
+
+model User {
+  id          Int           @id @default(autoincrement())
+  name        String
+  email       String        @unique
+  role        String        @default("member") // admin or member
+  telegram_id String?       // for notification purposes
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  tasks         Task[]         // Tasks assigned to this user
+  notifications Notification[] // Notifications for this user
+
+  @@map("users")
+}
+
+model Project {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  tasks     Task[]     // Tasks in this project
+  documents Document[] // Documents in this project
+
+  @@map("projects")
+}
+
+model Task {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  status      String    // To Do, In Progress, Done, etc.
+  priority    String    // Low, Medium, High, etc.
+  dueDate     DateTime? @map("due_date")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   Int           @map("project_id")
+  assignee    User?         @relation(fields: [assigneeId], references: [id])
+  assigneeId  Int?          @map("assignee_id")
+  notifications Notification[] // Notifications for this task
+
+  @@map("tasks")
+}
+
+model Document {
+  id          Int       @id @default(autoincrement())
+  phase       String    // Initiation, Planning, Design & Development, etc.
+  title       String
+  content     String    @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   Int       @map("project_id")
+
+  @@map("documents")
+}
+
+model Notification {
+  id          Int       @id @default(autoincrement())
+  type        String    // Task assignment, due date reminder, etc.
+  status      String    // Sent, Delivered, Read, etc.
+  sentAt      DateTime  @default(now()) @map("sent_at")
+  
+  // Relations
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId      Int       @map("task_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int       @map("user_id")
+
+  @@map("notifications")
+}

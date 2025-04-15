@@ -27,6 +27,8 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  // Output as standalone for Docker deployment
+  output: 'standalone',
 }
 
 if (userConfig) {

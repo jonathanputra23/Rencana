@@ -1,75 +1,58 @@
 import { NextResponse } from "next/server"
-
-// Sample project data
-const projects = [
-  {
-    id: "1",
-    name: "Web App Development",
-    description: "Frontend and backend development for the customer portal",
-    status: "In Progress",
-    progress: 65,
-    startDate: "2023-03-01",
-    endDate: "2023-04-28",
-    members: [
-      { id: "user-1", name: "Alex Johnson", role: "Frontend Developer" },
-      { id: "user-2", name: "Sarah Miller", role: "UX Designer" },
-      { id: "user-3", name: "David Chen", role: "Backend Developer" },
-      { id: "user-4", name: "Emily Rodriguez", role: "QA Engineer" },
-      { id: "user-5", name: "Michael Wong", role: "DevOps Engineer" },
-    ],
-    tasks: {
-      total: 24,
-      completed: 15,
-    },
-  },
-  {
-    id: "2",
-    name: "Mobile App Development",
-    description: "iOS and Android applications with shared codebase",
-    status: "In Progress",
-    progress: 40,
-    startDate: "2023-03-15",
-    endDate: "2023-05-15",
-    members: [
-      { id: "user-1", name: "Alex Johnson", role: "Frontend Developer" },
-      { id: "user-4", name: "Emily Rodriguez", role: "QA Engineer" },
-      { id: "user-6", name: "Jessica Taylor", role: "Product Manager" },
-      { id: "user-7", name: "Robert Kim", role: "Mobile Developer" },
-    ],
-    tasks: {
-      total: 18,
-      completed: 7,
-    },
-  },
-  {
-    id: "3",
-    name: "API Development",
-    description: "RESTful API services for internal and external use",
-    status: "In Progress",
-    progress: 80,
-    startDate: "2023-03-01",
-    endDate: "2023-04-20",
-    members: [
-      { id: "user-3", name: "David Chen", role: "Backend Developer" },
-      { id: "user-4", name: "Emily Rodriguez", role: "QA Engineer" },
-      { id: "user-8", name: "Lisa Wang", role: "Backend Developer" },
-    ],
-    tasks: {
-      total: 12,
-      completed: 9,
-    },
-  },
-]
+import { prisma } from "@/lib/prisma"
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const project = projects.find((p) => p.id === params.id)
+    const projectId = parseInt(params.id)
+    
+    if (isNaN(projectId)) {
+      return NextResponse.json({ success: false, message: "Invalid project ID" }, { status: 400 })
+    }
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        tasks: {
+          include: {
+            assignee: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true
+              }
+            }
+          }
+        },
+        documents: {
+          select: {
+            id: true,
+            phase: true,
+            title: true
+          }
+        }
+      }
+    })
 
     if (!project) {
       return NextResponse.json({ success: false, message: "Project not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true, data: project })
+    // Transform data to include task counts and format response
+    const totalTasks = project.tasks.length
+    const completedTasks = project.tasks.filter((task: any) => task.status === 'Done').length
+    
+    // Format the response
+    const formattedProject = {
+      ...project,
+      tasks: {
+        items: project.tasks,
+        total: totalTasks,
+        completed: completedTasks
+      }
+    }
+
+    return NextResponse.json({ success: true, data: formattedProject })
   } catch (error) {
     console.error("Error fetching project:", error)
     return NextResponse.json({ success: false, message: "Error fetching project" }, { status: 500 })
@@ -78,23 +61,31 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
-    const projectIndex = projects.findIndex((p) => p.id === params.id)
+    const projectId = parseInt(params.id)
+    
+    if (isNaN(projectId)) {
+      return NextResponse.json({ success: false, message: "Invalid project ID" }, { status: 400 })
+    }
 
-    if (projectIndex === -1) {
+    // Check if project exists
+    const existingProject = await prisma.project.findUnique({
+      where: { id: projectId }
+    })
+
+    if (!existingProject) {
       return NextResponse.json({ success: false, message: "Project not found" }, { status: 404 })
     }
 
     const body = await req.json()
 
     // Update project
-    const updatedProject = {
-      ...projects[projectIndex],
-      ...body,
-      id: params.id, // Ensure ID doesn't change
-    }
-
-    // In a real app, you would update this in a database
-    // For this example, we'll just return the updated project
+    const updatedProject = await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        name: body.name !== undefined ? body.name : undefined,
+        description: body.description !== undefined ? body.description : undefined,
+      }
+    })
 
     return NextResponse.json({
       success: true,
@@ -109,14 +100,25 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
-    const projectIndex = projects.findIndex((p) => p.id === params.id)
+    const projectId = parseInt(params.id)
+    
+    if (isNaN(projectId)) {
+      return NextResponse.json({ success: false, message: "Invalid project ID" }, { status: 400 })
+    }
 
-    if (projectIndex === -1) {
+    // Check if project exists
+    const existingProject = await prisma.project.findUnique({
+      where: { id: projectId }
+    })
+
+    if (!existingProject) {
       return NextResponse.json({ success: false, message: "Project not found" }, { status: 404 })
     }
 
-    // In a real app, you would delete this from a database
-    // For this example, we'll just return a success message
+    // Delete project (this will cascade delete tasks and documents)
+    await prisma.project.delete({
+      where: { id: projectId }
+    })
 
     return NextResponse.json({
       success: true,

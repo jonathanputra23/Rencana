@@ -1,56 +1,48 @@
 import { NextResponse } from "next/server"
-
-// Sample task data
-const tasks = [
-  {
-    id: "task-1",
-    title: "Update user authentication flow",
-    description: "Implement OAuth 2.0 and add social login options",
-    projectId: "1",
-    status: "In Progress",
-    priority: "High",
-    dueDate: "2023-04-20",
-    assignee: {
-      id: "user-1",
-      name: "Alex Johnson",
-      avatar: "/placeholder.svg?height=32&width=32",
-      initials: "AJ",
-    },
-    comments: 3,
-    attachments: 2,
-    createdAt: "2023-03-15T10:00:00Z",
-    updatedAt: "2023-04-10T14:30:00Z",
-  },
-  {
-    id: "task-2",
-    title: "Fix responsive layout issues",
-    description: "Address UI bugs on mobile devices",
-    projectId: "1",
-    status: "Done",
-    priority: "Medium",
-    dueDate: "2023-04-18",
-    assignee: {
-      id: "user-2",
-      name: "Sarah Miller",
-      avatar: "/placeholder.svg?height=32&width=32",
-      initials: "SM",
-    },
-    comments: 5,
-    attachments: 1,
-    createdAt: "2023-03-16T09:00:00Z",
-    updatedAt: "2023-04-18T11:45:00Z",
-  },
-]
+import { prisma } from "@/lib/prisma"
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const task = tasks.find((t) => t.id === params.id)
+    const taskId = parseInt(params.id)
+    
+    if (isNaN(taskId)) {
+      return NextResponse.json({ success: false, message: "Invalid task ID" }, { status: 400 })
+    }
+
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      include: {
+        assignee: true,
+        project: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    })
 
     if (!task) {
       return NextResponse.json({ success: false, message: "Task not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true, data: task })
+    // Format the response
+    const formattedTask = {
+      ...task,
+      assignee: task.assignee ? {
+        ...task.assignee,
+        avatar: "/placeholder.svg?height=32&width=32",
+        initials: task.assignee.name
+          .split(' ')
+          .map((n: string) => n[0])
+          .join('')
+          .toUpperCase()
+      } : null,
+      comments: 0,
+      attachments: 0
+    }
+
+    return NextResponse.json({ success: true, data: formattedTask })
   } catch (error) {
     console.error("Error fetching task:", error)
     return NextResponse.json({ success: false, message: "Error fetching task" }, { status: 500 })
@@ -59,28 +51,98 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
-    const taskIndex = tasks.findIndex((t) => t.id === params.id)
+    const taskId = parseInt(params.id)
+    
+    if (isNaN(taskId)) {
+      return NextResponse.json({ success: false, message: "Invalid task ID" }, { status: 400 })
+    }
 
-    if (taskIndex === -1) {
+    // Check if task exists
+    const existingTask = await prisma.task.findUnique({
+      where: { id: taskId }
+    })
+
+    if (!existingTask) {
       return NextResponse.json({ success: false, message: "Task not found" }, { status: 404 })
     }
 
     const body = await req.json()
 
-    // Update task
-    const updatedTask = {
-      ...tasks[taskIndex],
-      ...body,
-      id: params.id, // Ensure ID doesn't change
-      updatedAt: new Date().toISOString(),
+    // Validate assignee if provided
+    let assigneeId = undefined
+    if (body.assigneeId !== undefined) {
+      if (body.assigneeId === null) {
+        assigneeId = null
+      } else {
+        assigneeId = parseInt(body.assigneeId)
+        if (isNaN(assigneeId)) {
+          return NextResponse.json({ success: false, message: "Invalid assignee ID" }, { status: 400 })
+        }
+
+        const assignee = await prisma.user.findUnique({
+          where: { id: assigneeId }
+        })
+
+        if (!assignee) {
+          return NextResponse.json({ success: false, message: "Assignee not found" }, { status: 404 })
+        }
+      }
     }
 
-    // In a real app, you would update this in a database
-    // For this example, we'll just return the updated task
+    // Parse due date if provided
+    let dueDate = undefined
+    if (body.dueDate !== undefined) {
+      if (body.dueDate === null) {
+        dueDate = null
+      } else {
+        dueDate = new Date(body.dueDate)
+        if (isNaN(dueDate.getTime())) {
+          return NextResponse.json({ success: false, message: "Invalid due date format" }, { status: 400 })
+        }
+      }
+    }
+
+    // Update task
+    const updatedTask = await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        title: body.title !== undefined ? body.title : undefined,
+        description: body.description !== undefined ? body.description : undefined,
+        status: body.status !== undefined ? body.status : undefined,
+        priority: body.priority !== undefined ? body.priority : undefined,
+        dueDate: dueDate,
+        assigneeId: assigneeId
+      },
+      include: {
+        assignee: true,
+        project: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    })
+
+    // Format the response
+    const formattedTask = {
+      ...updatedTask,
+      assignee: updatedTask.assignee ? {
+        ...updatedTask.assignee,
+        avatar: "/placeholder.svg?height=32&width=32",
+        initials: updatedTask.assignee.name
+          .split(' ')
+          .map((n: string) => n[0])
+          .join('')
+          .toUpperCase()
+      } : null,
+      comments: 0,
+      attachments: 0
+    }
 
     return NextResponse.json({
       success: true,
-      data: updatedTask,
+      data: formattedTask,
       message: "Task updated successfully",
     })
   } catch (error) {
@@ -91,14 +153,25 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
-    const taskIndex = tasks.findIndex((t) => t.id === params.id)
+    const taskId = parseInt(params.id)
+    
+    if (isNaN(taskId)) {
+      return NextResponse.json({ success: false, message: "Invalid task ID" }, { status: 400 })
+    }
 
-    if (taskIndex === -1) {
+    // Check if task exists
+    const existingTask = await prisma.task.findUnique({
+      where: { id: taskId }
+    })
+
+    if (!existingTask) {
       return NextResponse.json({ success: false, message: "Task not found" }, { status: 404 })
     }
 
-    // In a real app, you would delete this from a database
-    // For this example, we'll just return a success message
+    // Delete task
+    await prisma.task.delete({
+      where: { id: taskId }
+    })
 
     return NextResponse.json({
       success: true,

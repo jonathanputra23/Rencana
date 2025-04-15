@@ -1,51 +1,61 @@
 import { NextResponse } from "next/server"
-
-// Sample user data
-const users = [
-  {
-    id: "user-1",
-    name: "Alex Johnson",
-    email: "alex.johnson@example.com",
-    avatar: "/placeholder.svg?height=32&width=32",
-    initials: "AJ",
-    role: "admin",
-    department: "Engineering",
-    position: "Frontend Developer",
-    skills: ["React", "TypeScript", "UI/UX"],
-    projects: ["1", "2"],
-    tasks: ["task-1", "task-3"],
-    createdAt: "2023-01-15T10:00:00Z",
-    updatedAt: "2023-04-10T14:30:00Z",
-  },
-  {
-    id: "user-2",
-    name: "Sarah Miller",
-    email: "sarah.miller@example.com",
-    avatar: "/placeholder.svg?height=32&width=32",
-    initials: "SM",
-    role: "member",
-    department: "Design",
-    position: "UX Designer",
-    skills: ["Figma", "User Research", "Prototyping"],
-    projects: ["1"],
-    tasks: ["task-2", "task-8"],
-    createdAt: "2023-01-20T09:00:00Z",
-    updatedAt: "2023-04-18T11:45:00Z",
-  },
-]
+import { prisma } from "@/lib/prisma"
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const user = users.find((u) => u.id === params.id)
+    const userId = parseInt(params.id)
+    
+    if (isNaN(userId)) {
+      return NextResponse.json({ success: false, message: "Invalid user ID" }, { status: 400 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        tasks: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            project: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
+    })
 
     if (!user) {
       return NextResponse.json({ success: false, message: "User not found" }, { status: 404 })
     }
 
-    // Remove sensitive information
-    const { email, ...sanitizedUser } = user
+    // Format the response
+    const initials = user.name
+      .split(' ')
+      .map((n: string) => n[0])
+      .join('')
+      .toUpperCase()
+    
+    // Get unique project IDs from tasks
+    const projectIds = [...new Set(user.tasks.map((task: any) => task.project.id))]
+    
+    const formattedUser = {
+      id: user.id,
+      name: user.name,
+      avatar: "/placeholder.svg?height=32&width=32",
+      initials,
+      role: user.role,
+      telegram_id: user.telegram_id,
+      tasks: user.tasks.map((task: any) => task.id),
+      projects: projectIds,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    }
 
-    return NextResponse.json({ success: true, data: sanitizedUser })
+    return NextResponse.json({ success: true, data: formattedUser })
   } catch (error) {
     console.error("Error fetching user:", error)
     return NextResponse.json({ success: false, message: "Error fetching user" }, { status: 500 })
@@ -54,16 +64,77 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
-    // This endpoint would typically be restricted to admins or the user themselves
-    // For this example, we'll just return an unauthorized error
+    // In a real app, this would be protected by authentication middleware
+    // For now, we'll implement the functionality
+    
+    const userId = parseInt(params.id)
+    
+    if (isNaN(userId)) {
+      return NextResponse.json({ success: false, message: "Invalid user ID" }, { status: 400 })
+    }
 
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Unauthorized. Only administrators or the user themselves can update user information.",
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!existingUser) {
+      return NextResponse.json({ success: false, message: "User not found" }, { status: 404 })
+    }
+
+    const body = await req.json()
+
+    // Update user
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: body.name !== undefined ? body.name : undefined,
+        email: body.email !== undefined ? body.email : undefined,
+        role: body.role !== undefined ? body.role : undefined,
+        telegram_id: body.telegram_id !== undefined ? body.telegram_id : undefined
       },
-      { status: 401 },
-    )
+      include: {
+        tasks: {
+          select: {
+            id: true,
+            project: {
+              select: {
+                id: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    // Format the response
+    const initials = updatedUser.name
+      .split(' ')
+      .map((n: string) => n[0])
+      .join('')
+      .toUpperCase()
+    
+    // Get unique project IDs from tasks
+    const projectIds = [...new Set(updatedUser.tasks.map((task: any) => task.project.id))]
+    
+    const formattedUser = {
+      id: updatedUser.id,
+      name: updatedUser.name,
+      avatar: "/placeholder.svg?height=32&width=32",
+      initials,
+      role: updatedUser.role,
+      telegram_id: updatedUser.telegram_id,
+      tasks: updatedUser.tasks.map((task: any) => task.id),
+      projects: projectIds,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: formattedUser,
+      message: "User updated successfully",
+    })
   } catch (error) {
     console.error("Error updating user:", error)
     return NextResponse.json({ success: false, message: "Error updating user" }, { status: 500 })
@@ -72,13 +143,45 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
-    // This endpoint would typically be restricted to admins
-    // For this example, we'll just return an unauthorized error
+    // In a real app, this would be protected by authentication middleware
+    // For now, we'll implement the functionality
+    
+    const userId = parseInt(params.id)
+    
+    if (isNaN(userId)) {
+      return NextResponse.json({ success: false, message: "Invalid user ID" }, { status: 400 })
+    }
 
-    return NextResponse.json(
-      { success: false, message: "Unauthorized. Only administrators can delete users." },
-      { status: 401 },
-    )
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!existingUser) {
+      return NextResponse.json({ success: false, message: "User not found" }, { status: 404 })
+    }
+
+    // Check if user has assigned tasks
+    const userTasks = await prisma.task.findMany({
+      where: { assigneeId: userId }
+    })
+
+    if (userTasks.length > 0) {
+      return NextResponse.json({
+        success: false,
+        message: "Cannot delete user with assigned tasks. Reassign or delete the tasks first."
+      }, { status: 400 })
+    }
+
+    // Delete user
+    await prisma.user.delete({
+      where: { id: userId }
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: "User deleted successfully",
+    })
   } catch (error) {
     console.error("Error deleting user:", error)
     return NextResponse.json({ success: false, message: "Error deleting user" }, { status: 500 })
