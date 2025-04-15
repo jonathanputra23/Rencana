@@ -1,12 +1,80 @@
+"use client"
 import Link from "next/link"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Plus, Filter } from "lucide-react"
 import { TaskList } from "@/components/tasks/task-list"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 
 export default function TasksPage() {
+  const [tasks, setTasks] = useState<any[]>([])
+  const [filter, setFilter] = useState<"all" | "today" | "upcoming" | "completed">("all")
+  const [searchTerm, setSearchTerm] = useState("")
+
+  // New Task dialog state
+  const [open, setOpen] = useState(false)
+  const [newTaskTitle, setNewTaskTitle] = useState("")
+  const [newTaskDesc, setNewTaskDesc] = useState("")
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    fetchTasks()
+  }, [filter])
+
+  async function fetchTasks() {
+    const queryParams = new URLSearchParams()
+    if (filter !== "all") queryParams.append("status", filter)
+
+    const res = await fetch(`/api/v1/tasks?${queryParams.toString()}`)
+    if (res.ok) {
+      const data = await res.json()
+      setTasks(data)
+    }
+  }
+
+  async function handleCreateTask(e: React.FormEvent) {
+    e.preventDefault()
+    setCreating(true)
+    setError("")
+    try {
+      const res = await fetch("/api/v1/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newTaskTitle,
+          description: newTaskDesc,
+        }),
+      })
+      if (!res.ok) {
+        setError("Failed to create task")
+        setCreating(false)
+        return
+      }
+      setNewTaskTitle("")
+      setNewTaskDesc("")
+      setOpen(false)
+      fetchTasks()
+    } catch (err) {
+      setError("Failed to create task")
+    }
+    setCreating(false)
+  }
+
+  const filteredTasks = tasks.filter((task) =>
+    task.title.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -41,67 +109,72 @@ export default function TasksPage() {
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input type="search" placeholder="Search tasks..." className="w-[200px] pl-8 md:w-[300px]" />
+              <Input
+                type="search"
+                placeholder="Search tasks..."
+                className="w-[200px] pl-8 md:w-[300px]"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
             <Button variant="outline">
               <Filter className="mr-2 h-4 w-4" />
               Filter
             </Button>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Task
-            </Button>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <Button onClick={() => setOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Task
+              </Button>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>New Task</DialogTitle>
+                  <DialogDescription>
+                    Enter the task title and description.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateTask} className="space-y-4">
+                  <Input
+                    placeholder="Task Title"
+                    value={newTaskTitle}
+                    onChange={e => setNewTaskTitle(e.target.value)}
+                    required
+                  />
+                  <Input
+                    placeholder="Description"
+                    value={newTaskDesc}
+                    onChange={e => setNewTaskDesc(e.target.value)}
+                  />
+                  {error && <div className="text-red-500 text-sm">{error}</div>}
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={creating}>
+                      {creating ? "Creating..." : "Create"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
-        <Tabs defaultValue="all" className="mt-6">
+        <Tabs defaultValue="all" onValueChange={(value: string) => setFilter(value as "all" | "today" | "upcoming" | "completed")} className="mt-6">
           <TabsList>
             <TabsTrigger value="all">All Tasks</TabsTrigger>
             <TabsTrigger value="today">Due Today</TabsTrigger>
             <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
             <TabsTrigger value="completed">Completed</TabsTrigger>
           </TabsList>
-          <TabsContent value="all" className="mt-4">
+          <TabsContent value={filter} className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle>All Tasks</CardTitle>
-                <CardDescription>View and manage all your assigned tasks</CardDescription>
+                <CardTitle>{filter === "all" ? "All Tasks" : filter === "today" ? "Due Today" : filter === "upcoming" ? "Upcoming Tasks" : "Completed Tasks"}</CardTitle>
+                <CardDescription>View and manage your tasks</CardDescription>
               </CardHeader>
               <CardContent>
-                <TaskList />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="today" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Due Today</CardTitle>
-                <CardDescription>Tasks that need to be completed today</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <TaskList filter="today" />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="upcoming" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Upcoming Tasks</CardTitle>
-                <CardDescription>Tasks due in the next 7 days</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <TaskList filter="upcoming" />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="completed" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Completed Tasks</CardTitle>
-                <CardDescription>Tasks you have already completed</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <TaskList filter="completed" />
+                <TaskList filter={filter} />
               </CardContent>
             </Card>
           </TabsContent>

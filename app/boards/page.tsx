@@ -1,12 +1,74 @@
-import Link from "next/link"
+"use client"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardHeader, CardContent, CardFooter, CardTitle, CardDescription } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import Link from "next/link"
 import { Plus, Search } from "lucide-react"
 import { KanbanBoard } from "@/components/boards/kanban-board"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 
 export default function BoardsPage() {
+  const [boards, setBoards] = useState<any[]>([])
+  const [filter, setFilter] = useState<"all" | "recent" | "favorites">("all")
+  const [searchTerm, setSearchTerm] = useState("")
+
+  useEffect(() => {
+    fetchBoards()
+  }, [filter])
+
+  async function fetchBoards() {
+    // For now, no backend filtering implemented, fetch all boards
+    const res = await fetch("/api/v1/boards")
+    if (res.ok) {
+      const data = await res.json()
+      setBoards(data)
+    }
+  }
+
+  // State for dialog
+  const [open, setOpen] = useState(false)
+  const [newBoardName, setNewBoardName] = useState("")
+  const [newBoardDesc, setNewBoardDesc] = useState("")
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState("")
+
+  async function handleCreateBoard(e: React.FormEvent) {
+    e.preventDefault()
+    setCreating(true)
+    setError("")
+    try {
+      const res = await fetch("/api/v1/boards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newBoardName,
+          description: newBoardDesc,
+        }),
+      })
+      if (!res.ok) {
+        setError("Failed to create board")
+        setCreating(false)
+        return
+      }
+      setNewBoardName("")
+      setNewBoardDesc("")
+      setOpen(false)
+      fetchBoards()
+    } catch (err) {
+      setError("Failed to create board")
+    }
+    setCreating(false)
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -43,10 +105,42 @@ export default function BoardsPage() {
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input type="search" placeholder="Search boards..." className="w-[200px] pl-8 md:w-[300px]" />
             </div>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Board
-            </Button>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <Button onClick={() => setOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Board
+              </Button>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>New Board</DialogTitle>
+                  <DialogDescription>
+                    Enter the board name and description.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateBoard} className="space-y-4">
+                  <Input
+                    placeholder="Board Name"
+                    value={newBoardName}
+                    onChange={e => setNewBoardName(e.target.value)}
+                    required
+                  />
+                  <Input
+                    placeholder="Description"
+                    value={newBoardDesc}
+                    onChange={e => setNewBoardDesc(e.target.value)}
+                  />
+                  {error && <div className="text-red-500 text-sm">{error}</div>}
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={creating}>
+                      {creating ? "Creating..." : "Create"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 

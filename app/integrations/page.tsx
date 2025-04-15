@@ -10,7 +10,52 @@ import { TelegramIntegration } from "@/components/integrations/telegram-integrat
 import { WebhookIntegration } from "@/components/integrations/webhook-integration"
 import { N8nIntegration } from "@/components/integrations/n8n-integration"
 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { useState } from "react"
+
 export default function IntegrationsPage() {
+  // Dialog state
+  const [open, setOpen] = useState(false)
+  const [newIntegrationName, setNewIntegrationName] = useState("")
+  const [newIntegrationDetails, setNewIntegrationDetails] = useState("")
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState("")
+
+  async function handleCreateIntegration(e: React.FormEvent) {
+    e.preventDefault()
+    setCreating(true)
+    setError("")
+    try {
+      const res = await fetch("/api/v1/integrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newIntegrationName,
+          details: newIntegrationDetails,
+        }),
+      })
+      if (!res.ok) {
+        setError("Failed to add integration")
+        setCreating(false)
+        return
+      }
+      setNewIntegrationName("")
+      setNewIntegrationDetails("")
+      setOpen(false)
+      // Optionally, refresh integrations list here
+    } catch (err) {
+      setError("Failed to add integration")
+    }
+    setCreating(false)
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1 p-4 md:p-6">
@@ -24,10 +69,43 @@ export default function IntegrationsPage() {
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh Status
             </Button>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Integration
-            </Button>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <Button onClick={() => setOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Integration
+              </Button>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Integration</DialogTitle>
+                  <DialogDescription>
+                    Enter integration details (e.g., webhook URL, Telegram token, etc.).
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateIntegration} className="space-y-4">
+                  <Input
+                    placeholder="Integration Name"
+                    value={newIntegrationName}
+                    onChange={e => setNewIntegrationName(e.target.value)}
+                    required
+                  />
+                  <Input
+                    placeholder="Integration Details"
+                    value={newIntegrationDetails}
+                    onChange={e => setNewIntegrationDetails(e.target.value)}
+                    required
+                  />
+                  {error && <div className="text-red-500 text-sm">{error}</div>}
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={creating}>
+                      {creating ? "Adding..." : "Add"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 

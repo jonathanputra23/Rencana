@@ -4,10 +4,12 @@ Rencana is a customized, simplified, and private clone of Jira tailored for inte
 
 ## Features
 
-- **Project & Task Management**: Create and manage project boards with customizable task columns
-- **Documentation Management**: Organize project documents by development lifecycle phases
-- **Notification System**: Integration with n8n and Telegram for task notifications
+- **Project & Task Management**: Create and manage project boards with customizable task columns and Kanban board
+- **Task List & Calendar**: Visualize tasks in a list, Kanban, and Gantt chart calendar view
+- **Documentation Management**: Organize project documents by development lifecycle phases, with dynamic creation and editing
+- **Notification System**: Integration with n8n and Telegram for task notifications, plus email and webhook support
 - **AI-powered**: Task description generation using OpenAI
+- **Integrations**: Easily connect webhooks, Telegram, n8n, and more via the Integrations menu
 - **Admin-only Access**: Secure, private platform for internal use
 
 ## Tech Stack
@@ -27,6 +29,7 @@ Rencana is a customized, simplified, and private clone of Jira tailored for inte
 - Docker and Docker Compose (for containerized deployment)
 - OpenAI API key (for AI task description generation)
 - Telegram Bot Token (for notifications)
+- n8n instance for workflow automation (optional, for advanced notifications)
 
 ## Getting Started
 
@@ -106,8 +109,8 @@ The admin token is defined in the `.env` file as `ADMIN_API_TOKEN`.
 
 ## Project Structure
 
-- `/app`: Next.js application pages and API routes
-- `/components`: React components
+- `/app`: Next.js application pages and API routes (including all main menu content and API endpoints)
+- `/components`: React components (UI, features, integrations, etc.)
 - `/lib`: Utility functions and shared code
 - `/prisma`: Database schema and migrations
 - `/public`: Static assets
@@ -122,6 +125,14 @@ The admin token is defined in the `.env` file as `ADMIN_API_TOKEN`.
 - `GET /api/v1/projects/:id`: Get a specific project
 - `PUT /api/v1/projects/:id`: Update a project
 - `DELETE /api/v1/projects/:id`: Delete a project
+
+### Boards
+
+- `GET /api/v1/boards`: Get all boards
+- `POST /api/v1/boards`: Create a new board
+- `GET /api/v1/boards/:id`: Get a specific board
+- `PUT /api/v1/boards/:id`: Update a board
+- `DELETE /api/v1/boards/:id`: Delete a board
 
 ### Tasks
 
@@ -154,6 +165,14 @@ The admin token is defined in the `.env` file as `ADMIN_API_TOKEN`.
 - `GET /api/v1/notifications/:id`: Get a specific notification
 - `PUT /api/v1/notifications/:id`: Update a notification
 - `DELETE /api/v1/notifications/:id`: Delete a notification
+
+### Integrations
+
+- `GET /api/v1/integrations`: Get all integrations
+- `POST /api/v1/integrations`: Create a new integration
+- `GET /api/v1/integrations/:id`: Get a specific integration
+- `PUT /api/v1/integrations/:id`: Update an integration
+- `DELETE /api/v1/integrations/:id`: Delete an integration
 
 ### AI
 

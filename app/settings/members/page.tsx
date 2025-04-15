@@ -3,8 +3,52 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Search, Plus } from "lucide-react"
 import { MembersList } from "@/components/settings/members-list"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { useState } from "react"
 
 export default function MembersPage() {
+  // Dialog state
+  const [open, setOpen] = useState(false)
+  const [newMemberName, setNewMemberName] = useState("")
+  const [newMemberEmail, setNewMemberEmail] = useState("")
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState("")
+
+  async function handleCreateMember(e: React.FormEvent) {
+    e.preventDefault()
+    setCreating(true)
+    setError("")
+    try {
+      const res = await fetch("/api/v1/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newMemberName,
+          email: newMemberEmail,
+        }),
+      })
+      if (!res.ok) {
+        setError("Failed to add member")
+        setCreating(false)
+        return
+      }
+      setNewMemberName("")
+      setNewMemberEmail("")
+      setOpen(false)
+      // Optionally, refresh members list here
+    } catch (err) {
+      setError("Failed to add member")
+    }
+    setCreating(false)
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1 p-4 md:p-6">
@@ -18,10 +62,43 @@ export default function MembersPage() {
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input type="search" placeholder="Search members..." className="pl-8 w-full md:w-[300px]" />
             </div>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Member
-            </Button>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <Button onClick={() => setOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Member
+              </Button>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Team Member</DialogTitle>
+                  <DialogDescription>
+                    Enter the member's name and email.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateMember} className="space-y-4">
+                  <Input
+                    placeholder="Name"
+                    value={newMemberName}
+                    onChange={e => setNewMemberName(e.target.value)}
+                    required
+                  />
+                  <Input
+                    placeholder="Email"
+                    value={newMemberEmail}
+                    onChange={e => setNewMemberEmail(e.target.value)}
+                    required
+                  />
+                  {error && <div className="text-red-500 text-sm">{error}</div>}
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={creating}>
+                      {creating ? "Adding..." : "Add"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 

@@ -1,9 +1,27 @@
+"use client"
 import Link from "next/link"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { GanttChart } from "@/components/calendar/gantt-chart"
 
 export default function CalendarPage() {
+  const [view, setView] = useState<"today" | "week" | "month">("today")
+  const [tasks, setTasks] = useState<any[]>([])
+
+  useEffect(() => {
+    fetchTasks()
+  }, [view])
+
+  async function fetchTasks() {
+    // For simplicity, fetch all tasks; in real app, filter by view
+    const res = await fetch("/api/v1/tasks")
+    if (res.ok) {
+      const data = await res.json()
+      setTasks(data)
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -36,15 +54,15 @@ export default function CalendarPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Project Timeline</h1>
           <div className="flex items-center gap-2">
-            <Button variant="outline">Today</Button>
-            <Button variant="outline">Week</Button>
-            <Button variant="outline">Month</Button>
+            <Button variant={view === "today" ? "default" : "outline"} onClick={() => setView("today")}>Today</Button>
+            <Button variant={view === "week" ? "default" : "outline"} onClick={() => setView("week")}>Week</Button>
+            <Button variant={view === "month" ? "default" : "outline"} onClick={() => setView("month")}>Month</Button>
           </div>
         </div>
 
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Web App Development</CardTitle>
+            <CardTitle>Project Timeline</CardTitle>
             <CardDescription>Project timeline and task dependencies</CardDescription>
           </CardHeader>
           <CardContent>
