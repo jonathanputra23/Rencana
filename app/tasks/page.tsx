@@ -36,7 +36,11 @@ export default function TasksPage() {
     const queryParams = new URLSearchParams()
     if (filter !== "all") queryParams.append("status", filter)
 
-    const res = await fetch(`/api/v1/tasks?${queryParams.toString()}`)
+    const res = await fetch(`/api/v1/tasks?${queryParams.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_API_TOKEN}`,
+      },
+    })
     if (res.ok) {
       const data = await res.json()
       setTasks(data)

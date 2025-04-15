@@ -10,7 +10,7 @@ export function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/api/v1')) {
     // In a real app, you would validate against stored credentials
     // For this example, we'll use a hardcoded admin token
-    const validAdminToken = process.env.ADMIN_API_TOKEN || 'admin-token-secret'
+    const validAdminToken = process.env.NEXT_PUBLIC_ADMIN_API_TOKEN || 'admin-token-secret'
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return new NextResponse(

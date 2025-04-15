@@ -16,7 +16,7 @@ Rencana is a customized, simplified, and private clone of Jira tailored for inte
 
 - **Frontend**: Next.js, React, Tailwind CSS, shadcn/ui
 - **Backend**: Next.js API routes
-- **Database**: PostgreSQL with Prisma ORM
+- **Database**: PostgreSQL with Prisma ORM (custom output location)
 - **Authentication**: Admin-only middleware
 - **AI Integration**: OpenAI API
 - **Notification**: n8n workflow integration with Telegram API
@@ -49,6 +49,7 @@ Rencana is a customized, simplified, and private clone of Jira tailored for inte
 3. Set up environment variables:
    - Copy `.env.example` to `.env`
    - Update the environment variables with your values
+   - Make sure to set both `ADMIN_API_TOKEN` and `NEXT_PUBLIC_ADMIN_API_TOKEN` to the same value
 
 4. Start the PostgreSQL database:
    ```bash
@@ -70,6 +71,9 @@ Rencana is a customized, simplified, and private clone of Jira tailored for inte
    npx prisma generate
    npx prisma db seed
    ```
+|
+   Note: The Prisma client is configured to generate to a custom location (`lib/generated/prisma`).
+   Make sure any imports use `./generated/prisma` instead of `@prisma/client`.
 
 6. Run the development server:
    ```bash
@@ -110,7 +114,11 @@ The admin token is defined in the `.env` file as `ADMIN_API_TOKEN`.
 ## Project Structure
 
 - `/app`: Next.js application pages and API routes (including all main menu content and API endpoints)
+  - All interactive page components are marked with "use client" directive for client-side rendering
+  - Layout components that export metadata are kept as server components
 - `/components`: React components (UI, features, integrations, etc.)
+  - All UI components are client-side components
+  - Layout components are separated into client and server parts as needed
 - `/lib`: Utility functions and shared code
 - `/prisma`: Database schema and migrations
 - `/public`: Static assets

@@ -36,10 +36,14 @@ export default function ProjectsPage() {
     const queryParams = new URLSearchParams()
     if (statusFilter) queryParams.append("status", statusFilter)
 
-    const res = await fetch(`/api/v1/projects?${queryParams.toString()}`)
+    const res = await fetch(`/api/v1/projects?${queryParams.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_API_TOKEN}`,
+      },
+    })
     if (res.ok) {
-      const data = await res.json()
-      setProjects(data)
+      const response = await res.json()
+      setProjects(response.data || [])
     }
   }
 
@@ -61,7 +65,10 @@ export default function ProjectsPage() {
     try {
       const res = await fetch("/api/v1/projects", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           name: newProjectName,
           description: newProjectDesc,
@@ -155,16 +162,13 @@ export default function ProjectsPage() {
                     description={project.description}
                     status={project.status}
                     progress={Math.round(
-                      (project.tasks.filter((task: any) => task.status === "Completed").length /
-                        project.tasks.length) *
-                        100 || 0,
+                      project.tasks.total > 0
+                        ? (project.tasks.completed / project.tasks.total) * 100
+                        : 0
                     )}
                     dueDate={new Date(project.updatedAt).toLocaleDateString()}
-                    members={project.tasks.length}
-                    tasks={{
-                      total: project.tasks.length,
-                      completed: project.tasks.filter((task: any) => task.status === "Completed").length,
-                    }}
+                    members={project.tasks.total}
+                    tasks={project.tasks}
                   />
                 ))}
                 <Card className="flex flex-col items-center justify-center p-6 h-full border-dashed">

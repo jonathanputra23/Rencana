@@ -27,7 +27,11 @@ export default function BoardsPage() {
 
   async function fetchBoards() {
     // For now, no backend filtering implemented, fetch all boards
-    const res = await fetch("/api/v1/boards")
+    const res = await fetch("/api/v1/boards", {
+      headers: {
+        Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_API_TOKEN}`,
+      },
+    })
     if (res.ok) {
       const data = await res.json()
       setBoards(data)
@@ -48,7 +52,10 @@ export default function BoardsPage() {
     try {
       const res = await fetch("/api/v1/boards", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           name: newBoardName,
           description: newBoardDesc,

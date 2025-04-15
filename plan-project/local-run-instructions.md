@@ -57,6 +57,8 @@ npx prisma generate
 npx prisma db seed
 ```
 
+Note: The Prisma client is configured to generate to a custom location (`../lib/generated/prisma`). Make sure to import from `./generated/prisma` instead of `@prisma/client` in your code.
+
 ---
 
 ## 4. Set Environment Variables
@@ -65,9 +67,12 @@ Create a `.env` file in the project root (or copy from `.env.example`) and set t
 
 ```
 ADMIN_API_TOKEN="your-admin-token"
+NEXT_PUBLIC_ADMIN_API_TOKEN="your-admin-token"  # Same value as ADMIN_API_TOKEN
 OPENAI_API_KEY="your-openai-api-key"
 TELEGRAM_BOT_TOKEN="your-telegram-bot-token"
 ```
+
+Note: The `NEXT_PUBLIC_ADMIN_API_TOKEN` is required for client-side API calls and should have the same value as `ADMIN_API_TOKEN`.
 
 ---
 

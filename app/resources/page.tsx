@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -249,14 +252,14 @@ export default function ResourcesPage() {
                     </div>
                     <Progress
                       value={member.utilization}
-                      className="h-2"
-                      indicatorClassName={
+                      className={cn(
+                        "h-2",
                         member.utilization > 90
-                          ? "bg-red-500"
+                          ? "[&>div]:bg-red-500"
                           : member.utilization > 80
-                            ? "bg-orange-500"
-                            : "bg-green-500"
-                      }
+                            ? "[&>div]:bg-orange-500"
+                            : "[&>div]:bg-green-500"
+                      )}
                     />
                     <div className="mt-2">
                       <p className="text-sm font-medium mb-1">Skills</p>

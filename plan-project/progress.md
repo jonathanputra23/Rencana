@@ -20,6 +20,7 @@ This document tracks the progress of the Rencana project development phases, key
 |                        | Docker containerization                     | Completed    | Dockerfile and docker-compose.yml created |
 |                        | Frontend integration with backend           | Completed    | All main menu content (Projects, Tasks, Boards, Calendar, Documentation, Integrations, Members/Settings) is now fully functional and integrated with the backend |
 | Testing & Debugging    | System and integration testing              | In Progress  | Manual and automated testing ongoing |
+|                        | Client-side component fixes                 | Completed    | Added "use client" directives to all necessary components |
 | Deployment             | Docker containerization and deployment      | In Progress  | Ready for deployment, final checks ongoing |
 | Feedback & Maintenance | Ongoing improvements and bug fixes          | In Progress  | User feedback being collected and addressed |
 
@@ -50,6 +51,13 @@ This document tracks the progress of the Rencana project development phases, key
 ### Testing & Debugging
 - [x] Write and run unit and integration tests
 - [x] Perform user acceptance testing (UAT)
+- [x] Fix client-side component issues (add "use client" directives)
+- [x] Fix authentication issues in API endpoints
+- [x] Fix layout component to properly separate client and server components
+- [x] Fix server error by restructuring layout components
+- [x] Fix Prisma client import path to match the generated location
+- [x] Fix API response handling in projects page
+- [x] Fix tasks object handling in project cards
 - [ ] Conduct security testing (OWASP checklist)
 
 ### Deployment

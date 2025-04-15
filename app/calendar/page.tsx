@@ -15,7 +15,11 @@ export default function CalendarPage() {
 
   async function fetchTasks() {
     // For simplicity, fetch all tasks; in real app, filter by view
-    const res = await fetch("/api/v1/tasks")
+    const res = await fetch("/api/v1/tasks", {
+      headers: {
+        Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_API_TOKEN}`,
+      },
+    })
     if (res.ok) {
       const data = await res.json()
       setTasks(data)

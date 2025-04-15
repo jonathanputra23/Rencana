@@ -13,8 +13,14 @@ Rencana backend will be a RESTful API built with Next.js API routes (already sca
 ### 1.1 Technology Stack
 
 - Node.js with Next.js API routes
+- Next.js App Router with proper separation of:
+  - Server components (default in App Router)
+  - Client components (marked with "use client" directive)
+  - Layout components that export metadata (server components)
 - Database: PostgreSQL (recommended for relational data and complex queries)
 - ORM: Prisma (for type-safe database access)
+  - Custom output location: "../lib/generated/prisma"
+  - Import from './generated/prisma' instead of '@prisma/client'
 - Authentication: Hardcoded admin-only access (middleware)
 - Notification: n8n workflow integration with Telegram API
 - AI: OpenAI API or local AI model for task description generation
@@ -92,6 +98,8 @@ erDiagram
 ## 4. Authentication & Authorization
 
 - Admin access protected by hardcoded credentials or environment variables
+  - `ADMIN_API_TOKEN` for server-side API authentication
+  - `NEXT_PUBLIC_ADMIN_API_TOKEN` for client-side API calls (same value as ADMIN_API_TOKEN)
 - No public user login; members only exist for notification purposes
 - Middleware to restrict API and UI access to admin only
 
